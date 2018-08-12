@@ -2,8 +2,10 @@ package kaldijni;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class KaldiAcousticScorer {
+
 
     static {
         try {
@@ -11,7 +13,7 @@ public class KaldiAcousticScorer {
             if (osName.contains("Windows")) {
                 throw new IllegalStateException("Windows is not supported yet");
             } else if (osName.contains("Linux")) {
-                NativeUtils.loadLibraryFromJar("/resources/kaldi-suskun.so");
+                NativeUtils.loadLibraryFromJar("/resources/kaldi-jni.so");
             } else {
                 throw new IllegalStateException("There is no library for OS = " + osName);
             }
@@ -19,6 +21,7 @@ public class KaldiAcousticScorer {
             e1.printStackTrace();
         }
     }
+
 
     private long nativeHandle;
 
@@ -30,5 +33,8 @@ public class KaldiAcousticScorer {
 
     native long initialize(String fileName);
 
-
+    public static void main(String[] args) {
+        Path p = Paths.get("foo");
+        KaldiAcousticScorer.load(p);
+    }
 }
