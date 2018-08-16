@@ -15,6 +15,38 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_kaldijni_KaldiAcousticScorer_initialize
   (JNIEnv *, jobject, jstring);
 
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    inputDimension
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_inputDimension
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    outputDimension
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_outputDimension
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    ivectorDimension
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_ivectorDimension
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    modelInfo
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_kaldijni_KaldiAcousticScorer_modelInfo
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

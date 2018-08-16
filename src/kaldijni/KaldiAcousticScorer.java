@@ -6,7 +6,6 @@ import java.nio.file.Paths;
 public class KaldiAcousticScorer {
 
     static {
-        System.out.println(System.getenv().get("java.library.path"));
         String osName = System.getProperty("os.name");
         if (osName.contains("Windows")) {
             throw new IllegalStateException("Windows is not supported yet");
@@ -25,10 +24,26 @@ public class KaldiAcousticScorer {
         return scorer;
     }
 
+    // Native methods.
+
+    /**
+     * Initializes with the given model file.
+     * @param fileName  model file
+     * @return native class pointer address as a long number.
+     */
     native long initialize(String fileName);
+
+    native int inputDimension();
+
+    native int outputDimension();
+
+    native int ivectorDimension();
+
+    native String modelInfo();
 
     public static void main(String[] args) {
         Path p = Paths.get("models/final.mdl");
-        KaldiAcousticScorer.load(p);
+        KaldiAcousticScorer scorer = KaldiAcousticScorer.load(p);
+        System.out.println("scorer.modelInfo() = " + scorer.modelInfo());
     }
 }
