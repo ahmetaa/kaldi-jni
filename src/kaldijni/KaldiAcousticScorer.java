@@ -28,22 +28,75 @@ public class KaldiAcousticScorer {
 
     /**
      * Initializes with the given model file.
-     * @param fileName  model file
+     *
+     * @param fileName model file
      * @return native class pointer address as a long number.
      */
-    native long initialize(String fileName);
+    private native long initialize(String fileName);
 
-    native int inputDimension();
+    /**
+     * returns underlying NN model input dimension.
+     */
+    int inputDimension() {
+        return inputDimension(nativeHandle);
+    }
 
-    native int outputDimension();
+    private native int inputDimension(long nativeHandle);
 
-    native int ivectorDimension();
+    /**
+     * returns underlying NN model output dimension.
+     */
+    int outputDimension() {
+        return outputDimension(nativeHandle);
+    }
 
-    native String modelInfo();
+    private native int outputDimension(long nativeHandle);
+
+    /**
+     * returns i-vector dimension.
+     */
+    int ivectorDimension() {
+        return ivectorDimension(nativeHandle);
+    }
+
+    native int ivectorDimension(long nativeHandle);
+
+    /**
+     * returns minimum required right context amount.
+     */
+    int rightContext() {
+        return rightContext(nativeHandle);
+    }
+
+    native int rightContext(long nativeHandle);
+
+    /**
+     * returns minimum required left context amount.
+     */
+    int leftContext() {
+        return leftContext(nativeHandle);
+    }
+
+    native int leftContext(long nativeHandle);
+
+    /**
+     * Returns a string that contains detailed information on NN model.
+     */
+    String modelInfo() {
+        return modelInfo(nativeHandle);
+    }
+
+    native String modelInfo(long nativeHandle);
 
     public static void main(String[] args) {
         Path p = Paths.get("models/final.mdl");
         KaldiAcousticScorer scorer = KaldiAcousticScorer.load(p);
+
+        System.out.println("Input dim      = " + scorer.inputDimension());
+        System.out.println("Output dim     = " + scorer.outputDimension());
+        System.out.println("Ivector dim    = " + scorer.ivectorDimension());
+        System.out.println("Left Context   = " + scorer.leftContext());
+        System.out.println("Right Conetext = " + scorer.rightContext());
         System.out.println("scorer.modelInfo() = " + scorer.modelInfo());
     }
 }

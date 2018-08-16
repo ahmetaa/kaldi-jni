@@ -18,34 +18,50 @@ JNIEXPORT jlong JNICALL Java_kaldijni_KaldiAcousticScorer_initialize
 /*
  * Class:     kaldijni_KaldiAcousticScorer
  * Method:    inputDimension
- * Signature: ()I
+ * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_inputDimension
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     kaldijni_KaldiAcousticScorer
  * Method:    outputDimension
- * Signature: ()I
+ * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_outputDimension
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     kaldijni_KaldiAcousticScorer
  * Method:    ivectorDimension
- * Signature: ()I
+ * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_ivectorDimension
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    rightContext
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_rightContext
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     kaldijni_KaldiAcousticScorer
+ * Method:    leftContext
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_kaldijni_KaldiAcousticScorer_leftContext
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     kaldijni_KaldiAcousticScorer
  * Method:    modelInfo
- * Signature: ()Ljava/lang/String;
+ * Signature: (J)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_kaldijni_KaldiAcousticScorer_modelInfo
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 #ifdef __cplusplus
 }
