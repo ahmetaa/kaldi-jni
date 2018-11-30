@@ -24,7 +24,7 @@ public class KaldiAcousticScorer {
         return scorer;
     }
 
-    // Native methods.
+    // Native methods and public accessors.
 
     /**
      * Initializes with the given model file.
@@ -37,7 +37,7 @@ public class KaldiAcousticScorer {
     /**
      * returns underlying NN model input dimension.
      */
-    int inputDimension() {
+    public int inputDimension() {
         return inputDimension(nativeHandle);
     }
 
@@ -46,7 +46,7 @@ public class KaldiAcousticScorer {
     /**
      * returns underlying NN model output dimension.
      */
-    int outputDimension() {
+    public int outputDimension() {
         return outputDimension(nativeHandle);
     }
 
@@ -55,41 +55,41 @@ public class KaldiAcousticScorer {
     /**
      * returns i-vector dimension.
      */
-    int ivectorDimension() {
+    public int ivectorDimension() {
         return ivectorDimension(nativeHandle);
     }
 
-    native int ivectorDimension(long nativeHandle);
+    private native int ivectorDimension(long nativeHandle);
 
     /**
      * returns minimum required right context amount.
      */
-    int rightContext() {
+    public int rightContext() {
         return rightContext(nativeHandle);
     }
 
-    native int rightContext(long nativeHandle);
+    private native int rightContext(long nativeHandle);
 
     /**
      * returns minimum required left context amount.
      */
-    int leftContext() {
+    public int leftContext() {
         return leftContext(nativeHandle);
     }
 
-    native int leftContext(long nativeHandle);
+    private native int leftContext(long nativeHandle);
 
     /**
      * Returns a string that contains detailed information on NN model.
      */
-    String modelInfo() {
+    public String modelInfo() {
         return modelInfo(nativeHandle);
     }
 
-    native String modelInfo(long nativeHandle);
+    private native String modelInfo(long nativeHandle);
 
     public static void main(String[] args) {
-        Path p = Paths.get("models/final.mdl");
+        Path p = Paths.get("/media/aaa/3t/asr/online-tdnn/tdnn_online/final.mdl");
         KaldiAcousticScorer scorer = KaldiAcousticScorer.load(p);
 
         System.out.println("Input dim      = " + scorer.inputDimension());
