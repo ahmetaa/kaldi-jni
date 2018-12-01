@@ -4,6 +4,7 @@
 
     <property name="build.dir" location="build"/>
     <property name="src.dir" location="src"/>
+    <property name="kaldi.jni.dir" location="/media/aaa/3t/kaldi/src/jni"/>
 
     <!--  compile to build dir -->
     <target name="compile">
@@ -28,7 +29,6 @@
         </jar>
     </target>
 
-
     <target name="jni" depends="compile">
         <javac
                 destdir="${build.dir}"
@@ -36,11 +36,15 @@
                 target="1.8"
                 source="1.8"
                 debuglevel="vars,lines,source"
-                srcdir="${src.dir}"
-                includes="kaldijni/KaldiAcousticScorer.java">
+                srcdir="${src.dir}">
         </javac>
         <mkdir dir="generated"/>
-        <javah destdir="generated" classpath="${build.dir}" class="kaldijni.KaldiAcousticScorer"/>
+        <javah destdir="generated" classpath="${build.dir}" class="kaldijni.KaldiWrapper"/>
+        <copy todir="${kaldi.jni.dir}">
+            <fileset dir="generated">
+                <include name="**/*.h"/>
+            </fileset>
+        </copy>
     </target>
 
 </project>
