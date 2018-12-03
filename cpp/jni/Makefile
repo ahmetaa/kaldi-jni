@@ -16,6 +16,7 @@ OBJFILES = kaldi-jni.o
 LIBNAME = kaldi-jni
 
 ADDLIBS = ../chain/kaldi-chain.a ../cudamatrix/kaldi-cudamatrix.a \
+          ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \

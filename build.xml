@@ -6,11 +6,17 @@
     <property name="src.dir" location="src"/>
     <property name="kaldi.jni.dir" location="/media/aaa/3t/kaldi/src/jni"/>
 
+    <!-- libraries -->
+    <path id="classpath">
+        <fileset dir="lib/runtime"/>
+    </path>
+
     <!--  compile to build dir -->
     <target name="compile">
         <delete dir="${build.dir}"/>
         <mkdir dir="${build.dir}"/>
         <javac
+                classpathref="classpath"
                 destdir="${build.dir}"
                 debug="true"
                 debuglevel="vars,lines,source">
@@ -30,21 +36,16 @@
     </target>
 
     <target name="jni" depends="compile">
-        <javac
-                destdir="${build.dir}"
-                debug="true"
-                target="1.8"
-                source="1.8"
-                debuglevel="vars,lines,source"
-                srcdir="${src.dir}">
-        </javac>
         <mkdir dir="generated"/>
-        <javah destdir="generated" classpath="${build.dir}" class="kaldijni.KaldiWrapper"/>
+        <javah destdir="cpp/jni" classpath="${build.dir}" class="kaldijni.KaldiWrapper"/>
         <copy todir="${kaldi.jni.dir}">
             <fileset dir="generated">
                 <include name="**/*.h"/>
             </fileset>
+            <fileset dir="cpp/jni">
+            </fileset>
         </copy>
+
     </target>
 
 </project>
