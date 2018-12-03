@@ -18,12 +18,12 @@ class DecoderConfig {
      const nnet3::AmNnetSimple &am_nnet,
      fst::Fst<fst::StdArc> *decode_fst,
      fst::SymbolTable *word_syms,
-     const TransitionModel &trans_model
+     TransitionModel *trans_model
   ): am_nnet_(am_nnet), decode_fst_(decode_fst), word_syms_(word_syms), trans_model_(trans_model) {}
 
   const nnet3::AmNnetSimple &GetAmNnet() { return am_nnet_; }
 
-  const TransitionModel &GetTransitionModel() { return trans_model_; }
+  const TransitionModel *GetTransitionModel() { return trans_model_; }
 
   const fst::Fst<fst::StdArc> *GetDecodeFst() { return decode_fst_; }
 
@@ -35,7 +35,7 @@ class DecoderConfig {
   nnet3::AmNnetSimple am_nnet_;
   fst::Fst<fst::StdArc> *decode_fst_;
   fst::SymbolTable *word_syms_;
-  const TransitionModel &trans_model_;
+  TransitionModel *trans_model_;
 
 };
 

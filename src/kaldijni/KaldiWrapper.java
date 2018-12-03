@@ -1,7 +1,11 @@
 package kaldijni;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 public class KaldiWrapper {
 
@@ -82,27 +86,59 @@ public class KaldiWrapper {
 
     private native String modelInfo(long nativeHandle);
 
-    public static void main(String[] args) {
-        Path root = /* Put root here */Paths.get("");
+    public static void main(String[] args) throws IOException {
+        Path root = /* Put root here */Paths.get("/media/ahmetaa/depo/projects/kaldi-models/model/babel-no-ivector");
         Path model = root.resolve("final.mdl");
         Path fst = root.resolve("fst/babel-train/HCLG.fst");
         Path symbols = root.resolve("fst/babel-train/words.txt");
 
         KaldiWrapper wrapper = KaldiWrapper.load(model, fst, symbols);
 
-        Path featurePath = Paths.get("test/data/raw_mfcc_tmp.01.ark");
-/*
-        Iterable<SpeechData> it = KaldiIO.iterableKaldiFeatureLoader(featurePath.toFile(), 8000);
-        SpeechData data = it.iterator().next();
-        float[] features = toVector(data.getDataAsMatrix());
-        int frameCount = data.vectorCount();
-        int dimension = data.get(0).size();
-*/
+        Path wav  = Paths.get("test/wav/wav1-8khz.wav");
+        Path featurePath = Paths.get("test/mfcc/wav1-8khz.mfcc.ark");
+
+        generateMfcc(wav, featurePath);
 
         Path out = Paths.get("foo");
+        Log.info("Start.");
         wrapper.decodeWithFeatureFile(out, featurePath);
+        //wrapper.decodeTest(out, featurePath, model);
+        Log.info("End.");
 
         // System.out.println("modelInfo() = " + wrapper.modelInfo());
+    }
+
+    private static SpeechData generateMfcc(Path wav, Path out) throws IOException {
+        FloatData allInput = new WavFileChannelReader(wav.toFile()).getAllSamples();
+        ShiftedFrameGenerator generator = ShiftedFrameGenerator.forTime(8000, 25, 10, true);
+        List<FloatData> frames = generator.generateAllFrames(allInput);
+        Preprocessor preprocessor = Preprocessor.KALDI_8KHZ
+            .ditherMultiplier(0) // for determinism, we remove dither.
+            .windower(WindowFunction.Type.HAMMING)
+            .build();
+        List<Preprocessor.Result> results = preprocessor.processAllFloat(frames);
+        Spectrogram spectrogram = new Spectrogram.Builder(preprocessor).build();
+
+        MelFilterBank filter = MelFilterBank.KALDI_8KHZ
+            .filterAmount(40)
+            .minimumFrequency(40)
+            .maximumFrequency(3800)
+            .build();
+
+        MelCepstrum cosineTransform = MelCepstrum
+            .builder(40, 40)
+            .applyLiftering(22)
+            .kaldiStyle(true)
+            .build();
+
+        List<FloatData> features = results
+            .stream()
+            .map(p -> cosineTransform.process(filter.process(spectrogram.process(p.data))))
+            .collect(Collectors.toList());
+        SpeechData sp = new SpeechData(Segment.fromWavFile(wav,0), features);
+
+        KaldiIO.writeBinaryKaldiFeatures(out, sp);
+        return sp;
     }
 
     private static float[] toVector(float[][] arr2d) {

@@ -43,12 +43,12 @@ JNIEXPORT jlong JNICALL Java_kaldijni_KaldiWrapper_initialize
 
   std::cout << "Initializing with model " << model_path << std::endl;
 
-  TransitionModel trans_model;
+  TransitionModel *trans_model = new TransitionModel();
   kaldi::nnet3::AmNnetSimple am_nnet;
   {
     bool binary;
     kaldi::Input ki(model_path, &binary);      
-    trans_model.Read(ki.Stream(), binary);
+    trans_model->Read(ki.Stream(), binary);
     am_nnet.Read(ki.Stream(), binary);
     kaldi::nnet3::SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
     kaldi::nnet3::SetDropoutTestMode(true, &(am_nnet.GetNnet()));
@@ -161,7 +161,7 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
 
-  const TransitionModel &trans_model = config->GetTransitionModel();
+  const TransitionModel *trans_model = config->GetTransitionModel();
   const fst::Fst<fst::StdArc> *decode_fst = config->GetDecodeFst();
   const fst::SymbolTable *word_syms = config->GetSymbolTable();
   const nnet3::AmNnetSimple am_nnet = config->GetAmNnet();
@@ -192,14 +192,14 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
 */
 
         kaldi::nnet3::DecodableAmNnetSimple nnet_decodable(
-            decodable_opts, trans_model, am_nnet,
+            decodable_opts, *trans_model, am_nnet,
             features, /*ivector*/ NULL, /*online_ivectors*/ NULL,
             /*online_ivector_period*/ 0, &compiler);
 
         double like;
 
         if (DecodeUtteranceLatticeFaster(
-                decoder, nnet_decodable, trans_model, word_syms, utt,
+                decoder, nnet_decodable, *trans_model, word_syms, utt,
                 decodable_opts.acoustic_scale, determinize, allow_partial,
                 &alignment_writer, &words_writer, &compact_lattice_writer,
                 &lattice_writer, &like)) {
