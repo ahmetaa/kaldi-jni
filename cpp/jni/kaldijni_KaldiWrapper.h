@@ -18,10 +18,18 @@ JNIEXPORT jlong JNICALL Java_kaldijni_KaldiWrapper_initialize
 /*
  * Class:     kaldijni_KaldiWrapper
  * Method:    decode
- * Signature: (JLjava/lang/String;Ljava/lang/String;[F)V
+ * Signature: (JLjava/lang/String;Ljava/lang/String;[FII)V
  */
 JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decode
-  (JNIEnv *, jobject, jlong, jstring, jstring, jfloatArray);
+  (JNIEnv *, jobject, jlong, jstring, jstring, jfloatArray, jint, jint);
+
+/*
+ * Class:     kaldijni_KaldiWrapper
+ * Method:    decodeWithFeatureFile
+ * Signature: (JLjava/lang/String;Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
+  (JNIEnv *, jobject, jlong, jstring, jstring);
 
 /*
  * Class:     kaldijni_KaldiWrapper

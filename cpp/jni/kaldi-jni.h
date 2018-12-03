@@ -23,6 +23,12 @@ class DecoderConfig {
 
   const nnet3::AmNnetSimple &GetAmNnet() { return am_nnet_; }
 
+  const TransitionModel &GetTransitionModel() { return trans_model_; }
+
+  const fst::Fst<fst::StdArc> *GetDecodeFst() { return decode_fst_; }
+
+  const fst::SymbolTable *GetSymbolTable() { return word_syms_; }
+
   void Info();
 
  private:  
