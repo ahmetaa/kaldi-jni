@@ -4,7 +4,7 @@
 
     <property name="build.dir" location="build"/>
     <property name="src.dir" location="src"/>
-    <property name="kaldi.jni.dir" location="/media/ahmetaa/depo/kaldi/src/jni"/>
+    <property name="kaldi.jni.dir" location="/media/aaa/3t/kaldi/src/jni"/>
 
     <!-- libraries -->
     <path id="classpath">

@@ -1,9 +1,14 @@
 package kaldijni;
 
+import com.google.common.base.Stopwatch;
+
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -86,26 +91,62 @@ public class KaldiWrapper {
 
     private native String modelInfo(long nativeHandle);
 
-    public static void main(String[] args) throws IOException {
-        Path root = /* Put root here */Paths.get("/media/ahmetaa/depo/projects/kaldi-models/model/babel-no-ivector");
+    public static void main(String[] args) throws Exception {
+        Path root = Paths.get("")/* Root path */ ;
         Path model = root.resolve("final.mdl");
         Path fst = root.resolve("fst/babel-train/HCLG.fst");
         Path symbols = root.resolve("fst/babel-train/words.txt");
-
         KaldiWrapper wrapper = KaldiWrapper.load(model, fst, symbols);
 
-        Path wav  = Paths.get("test/wav/wav1-8khz.wav");
-        Path featurePath = Paths.get("test/mfcc/wav1-8khz.mfcc.ark");
-
-        generateMfcc(wav, featurePath);
-
         Path out = Paths.get("foo");
-        Log.info("Start.");
-        wrapper.decodeWithFeatureFile(out, featurePath);
-        //wrapper.decodeTest(out, featurePath, model);
-        Log.info("End.");
+
+        wrapper.multiThreadedTest(out);
+
 
         // System.out.println("modelInfo() = " + wrapper.modelInfo());
+    }
+
+    private void singleFileTest(Path out) throws IOException {
+        Path wav = Paths.get("test/wav/wav1-8khz.wav");
+        Path featurePath = Paths.get("test/mfcc/wav1-8khz.mfcc.ark");
+        Path arkPath = Paths.get("test/mfcc/raw_mfcc_tmp.01.ark");
+        generateMfcc(wav, featurePath);
+
+        Log.info("Start.");
+        decodeWithFeatureFile(out, arkPath);
+        Log.info("End.");
+
+    }
+
+    private void multiThreadedTest(Path outDir) throws Exception {
+
+        Stopwatch sw = Stopwatch.createStarted();
+        Log.info("Started.");
+
+        Path wavRoot = Paths.get("test/wav-multiple");
+        List<Path> wavFiles = Files.walk(wavRoot, 1).filter(s -> s.toFile().getName().endsWith(".wav"))
+                .collect(Collectors.toList());
+
+        ExecutorService service = new BlockingExecutor(22);
+
+        int i = 0;
+        double d = 0;
+        for (Path wavFile : wavFiles) {
+            d += WavTool.getDurationInSeconds(wavFile);
+            Path featurePath = Files.createTempFile("feature", ".feat.ark");
+            generateMfcc(wavFile, featurePath);
+            service.submit(() -> {
+                Log.info("Decoding %s", wavFile);
+                decodeWithFeatureFile(outDir, featurePath);
+            });
+        }
+
+        service.shutdown();
+        service.awaitTermination(1, TimeUnit.DAYS);
+
+        double elapsed = sw.elapsed(TimeUnit.MILLISECONDS) / 1000d;
+        Log.info("Elapsed = %.2f Time Total = %.2f", elapsed, d);
+
     }
 
     private static SpeechData generateMfcc(Path wav, Path out) throws IOException {
@@ -113,29 +154,29 @@ public class KaldiWrapper {
         ShiftedFrameGenerator generator = ShiftedFrameGenerator.forTime(8000, 25, 10, true);
         List<FloatData> frames = generator.generateAllFrames(allInput);
         Preprocessor preprocessor = Preprocessor.KALDI_8KHZ
-            .ditherMultiplier(0) // for determinism, we remove dither.
-            .windower(WindowFunction.Type.HAMMING)
-            .build();
+                .ditherMultiplier(0) // for determinism, we remove dither.
+                .windower(WindowFunction.Type.POVEY)
+                .build();
         List<Preprocessor.Result> results = preprocessor.processAllFloat(frames);
         Spectrogram spectrogram = new Spectrogram.Builder(preprocessor).build();
 
         MelFilterBank filter = MelFilterBank.KALDI_8KHZ
-            .filterAmount(40)
-            .minimumFrequency(40)
-            .maximumFrequency(3800)
-            .build();
+                .filterAmount(40)
+                .minimumFrequency(40)
+                .maximumFrequency(3800)
+                .build();
 
         MelCepstrum cosineTransform = MelCepstrum
-            .builder(40, 40)
-            .applyLiftering(22)
-            .kaldiStyle(true)
-            .build();
+                .builder(40, 40)
+                .applyLiftering(22)
+                .kaldiStyle(true)
+                .build();
 
         List<FloatData> features = results
-            .stream()
-            .map(p -> cosineTransform.process(filter.process(spectrogram.process(p.data))))
-            .collect(Collectors.toList());
-        SpeechData sp = new SpeechData(Segment.fromWavFile(wav,0), features);
+                .stream()
+                .map(p -> cosineTransform.process(filter.process(spectrogram.process(p.data))))
+                .collect(Collectors.toList());
+        SpeechData sp = new SpeechData(Segment.fromWavFile(wav, 0), features);
 
         KaldiIO.writeBinaryKaldiFeatures(out, sp);
         return sp;

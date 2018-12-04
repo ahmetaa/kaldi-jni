@@ -108,6 +108,7 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decode
   nnetOptions.extra_right_context = 0;
   nnetOptions.extra_left_context_initial = -1;
   nnetOptions.extra_right_context_final = -1;
+  nnetOptions.frame_subsampling_factor = 3;
 
   jfloat *features = env->GetFloatArrayElements(feature_arr, NULL);
 
@@ -140,12 +141,13 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
   bool determinize = decoderConf.determinize_lattice;
 
   kaldi::nnet3::NnetSimpleComputationOptions decodable_opts;
-  decodable_opts.frames_per_chunk = 50;
+  decodable_opts.frames_per_chunk = 51; // factor of sub sampling factor
   decodable_opts.acoustic_scale = 1.0f;
   decodable_opts.extra_left_context = 0;
   decodable_opts.extra_right_context = 0;
   decodable_opts.extra_left_context_initial = -1;
   decodable_opts.extra_right_context_final = -1;
+  decodable_opts.frame_subsampling_factor = 3;
 
   kaldi::SequentialBaseFloatMatrixReader feature_reader(feature_file);
 
@@ -166,12 +168,6 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
   const fst::SymbolTable *word_syms = config->GetSymbolTable();
   const nnet3::AmNnetSimple am_nnet = config->GetAmNnet();
 
-
-    // this compiler object allows caching of computations across
-    // different utterances.
-    kaldi::nnet3::CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
-                                       decodable_opts.optimize_config);
-
     Int32VectorWriter words_writer("");
     Int32VectorWriter alignment_writer("");
 
@@ -182,48 +178,39 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decodeWithFeatureFile
          KALDI_WARN << "Zero-length utterance: " << utt;
       }
 
-      LatticeFasterDecoder decoder(*decode_fst, decoderConf);
-/*
+      std::cout << "Frame Count = " << features.NumRows()
+        << " Dimension = " << features.NumCols() << std::endl ;
+
+      LatticeFasterDecoder *decoder =
+        new LatticeFasterDecoder(*decode_fst, decoderConf);
+
       kaldi::DecodableInterface *nnet_decodable = new
           nnet3::DecodableAmNnetSimpleParallel(
-              decodable_opts, trans_model, am_nnet,
-              features, NULL, NULL,
-              0);
-*/
+              decodable_opts, *trans_model, am_nnet,
+              features, /*ivector*/ NULL, /*online_ivectors*/ NULL, 0);
 
-        kaldi::nnet3::DecodableAmNnetSimple nnet_decodable(
-            decodable_opts, *trans_model, am_nnet,
-            features, /*ivector*/ NULL, /*online_ivectors*/ NULL,
-            /*online_ivector_period*/ 0, &compiler);
 
-        double like;
-
-        if (DecodeUtteranceLatticeFaster(
-                decoder, nnet_decodable, *trans_model, word_syms, utt,
-                decodable_opts.acoustic_scale, determinize, allow_partial,
-                &alignment_writer, &words_writer, &compact_lattice_writer,
-                &lattice_writer, &like)) {
-          tot_like += like;
-          frame_count += nnet_decodable.NumFramesReady();
-          num_success++;
-        } else num_fail++;
-
-/*      kaldi::DecodeUtteranceLatticeFasterClass *task =
+      kaldi::DecodeUtteranceLatticeFasterClass *task =
           new DecodeUtteranceLatticeFasterClass(
               decoder, nnet_decodable, // takes ownership of these two.
-              trans_model, word_syms, utt, decodable_opts.acoustic_scale,
-              determinize, allow_partial, *//**&alignment_writer*//* NULL, *//**&words_writer*//* NULL,
-               &compact_lattice_writer, &lattice_writer,
-               &tot_like, &frame_count, &num_success, &num_fail, NULL);*/
+              *trans_model,
+               word_syms,
+               utt,
+               decodable_opts.acoustic_scale,
+               determinize,
+               allow_partial,
+               &alignment_writer,
+               &words_writer,
+               &compact_lattice_writer,
+               &lattice_writer,
+               &tot_like, &frame_count, &num_success, &num_fail, NULL);
 
-/*
+
       (*task)();
       delete task;
-*/
-
   }
 
-  std::cout << "Done" << std::endl;
+  std::cout << "Done!!!" << std::endl;
 
 }
 
