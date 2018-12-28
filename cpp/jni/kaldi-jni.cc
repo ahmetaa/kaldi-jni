@@ -90,29 +90,94 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decode
   const char *o_str = env->GetStringUTFChars(out_path_str, 0);
   const std::string out_path(o_str);
 
-  const char *u_str = env->GetStringUTFChars(utterance_id_str, 0);
-  const std::string utterance_id(u_str);
+  jfloat* featureArr = env->GetFloatArrayElements(feature_arr, NULL);
 
-  bool allow_partial = true;  
+  bool allow_partial = true;
   kaldi::LatticeFasterDecoderConfig decoderConf;
-  
+
   decoderConf.beam = 15.0f;
   decoderConf.max_active = 7000;
   decoderConf.min_active = 200;
   decoderConf.lattice_beam = 8.0f;
+  bool determinize = decoderConf.determinize_lattice;
 
-  kaldi::nnet3::NnetSimpleComputationOptions nnetOptions;
-  nnetOptions.frames_per_chunk = 50;
-  nnetOptions.acoustic_scale = 1.0f;
-  nnetOptions.extra_left_context = 0;
-  nnetOptions.extra_right_context = 0;
-  nnetOptions.extra_left_context_initial = -1;
-  nnetOptions.extra_right_context_final = -1;
-  nnetOptions.frame_subsampling_factor = 3;
+  kaldi::nnet3::NnetSimpleComputationOptions decodable_opts;
+  decodable_opts.frames_per_chunk = 51; // factor of sub sampling factor
+  decodable_opts.acoustic_scale = 1.0f;
+  decodable_opts.extra_left_context = 0;
+  decodable_opts.extra_right_context = 0;
+  decodable_opts.extra_left_context_initial = -1;
+  decodable_opts.extra_right_context_final = -1;
+  decodable_opts.frame_subsampling_factor = 3;
 
-  jfloat *features = env->GetFloatArrayElements(feature_arr, NULL);
+  CompactLatticeWriter compact_lattice_writer;
+  LatticeWriter lattice_writer;
+  if (! (determinize ? compact_lattice_writer.Open(out_path)
+          : lattice_writer.Open(out_path))) {
+      KALDI_ERR << "Could not open table for writing lattices: "
+                 << out_path;
+  }
 
-  std::cout << "Decoder conf. Beam = " << decoderConf.beam << std::endl;
+    double tot_like = 0.0;
+    kaldi::int64 frame_counter = 0;
+    int num_success = 0, num_fail = 0;
+
+  const TransitionModel *trans_model = config->GetTransitionModel();
+  const fst::Fst<fst::StdArc> *decode_fst = config->GetDecodeFst();
+  const fst::SymbolTable *word_syms = config->GetSymbolTable();
+  const nnet3::AmNnetSimple am_nnet = config->GetAmNnet();
+
+    Int32VectorWriter words_writer("");
+    Int32VectorWriter alignment_writer("");
+
+  const char *u_str = env->GetStringUTFChars(utterance_id_str, 0);
+  const std::string utt(u_str);
+
+      //const kaldi::Matrix<BaseFloat> &features (feature_reader.Value());
+      const kaldi::Matrix<BaseFloat> features(frame_count, dimension);
+      const Vector<BaseFloat> vec(frame_count*dimension);
+      for(int i = 0; i< frame_count*dimension ; i++) {
+         vec(i) = featureArr[i];
+      }
+      features.CopyRowsFromVec(vec);
+
+      if (features.NumRows() == 0) {
+         KALDI_WARN << "Zero-length utterance: " << utt;
+      }
+
+      std::cout << "Frame Count = " << features.NumRows()
+        << " Dimension = " << features.NumCols() << std::endl ;
+
+      LatticeFasterDecoder *decoder =
+        new LatticeFasterDecoder(*decode_fst, decoderConf);
+
+      kaldi::DecodableInterface *nnet_decodable = new
+          nnet3::DecodableAmNnetSimpleParallel(
+              decodable_opts, *trans_model, am_nnet,
+              features, /*ivector*/ NULL, /*online_ivectors*/ NULL, 0);
+
+
+      kaldi::DecodeUtteranceLatticeFasterClass *task =
+          new DecodeUtteranceLatticeFasterClass(
+              decoder, nnet_decodable, // takes ownership of these two.
+              *trans_model,
+               word_syms,
+               utt,
+               decodable_opts.acoustic_scale,
+               determinize,
+               allow_partial,
+               &alignment_writer,
+               &words_writer,
+               &compact_lattice_writer,
+               &lattice_writer,
+               &tot_like, &frame_counter, &num_success, &num_fail, NULL);
+
+
+      (*task)();
+      delete task;
+
+  std::cout << "Done!!!" << std::endl;
+
 
 }
 
