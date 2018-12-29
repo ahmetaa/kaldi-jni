@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
+
 public class KaldiWrapper {
 
     static {
@@ -51,9 +52,8 @@ public class KaldiWrapper {
             float[] features,
             int frameCount,
             int dimension) {
-        decode(
-                nativeHandle,
-                outputPath.toFile().getAbsolutePath(),
+        decode( nativeHandle,
+            "ark:" + outputPath.toFile().getAbsolutePath(),
                 utteranceId,
                 features,
                 frameCount,
@@ -100,7 +100,9 @@ public class KaldiWrapper {
 
         Path out = Paths.get("foo");
 
-        wrapper.multiThreadedTest(out);
+        //wrapper.multiThreadedTest(out);
+        wrapper.singleFileTest(out);
+        //wrapper.callFeatureTest(out);
 
 
         // System.out.println("modelInfo() = " + wrapper.modelInfo());
@@ -109,13 +111,25 @@ public class KaldiWrapper {
     private void singleFileTest(Path out) throws IOException {
         Path wav = Paths.get("test/wav/wav1-8khz.wav");
         Path featurePath = Paths.get("test/mfcc/wav1-8khz.mfcc.ark");
-        Path arkPath = Paths.get("test/mfcc/raw_mfcc_tmp.01.ark");
+        //Path arkPath = Paths.get("test/mfcc/raw_mfcc_tmp.01.ark");
         generateMfcc(wav, featurePath);
 
         Log.info("Start.");
-        decodeWithFeatureFile(out, arkPath);
+        decodeWithFeatureFile(out, featurePath);
         Log.info("End.");
 
+    }
+
+    private void callFeatureTest(Path out) throws IOException {
+        Path wav = Paths.get("test/wav/wav1-8khz.wav");
+        SpeechData sp = getMfcc(wav);
+        Log.info("Start.");
+        decode(out,
+            wav.toFile().getName().replaceAll("\\.wav",""),
+            toVector(sp.getDataAsMatrix()),
+            sp.vectorCount(),
+            sp.get(0).size());
+        Log.info("End.");
     }
 
     private void multiThreadedTest(Path outDir) throws Exception {
@@ -127,7 +141,7 @@ public class KaldiWrapper {
         List<Path> wavFiles = Files.walk(wavRoot, 1).filter(s -> s.toFile().getName().endsWith(".wav"))
                 .collect(Collectors.toList());
 
-        ExecutorService service = new BlockingExecutor(22);
+        ExecutorService service = new BlockingExecutor(2);
 
         int i = 0;
         double d = 0;
@@ -150,6 +164,12 @@ public class KaldiWrapper {
     }
 
     private static SpeechData generateMfcc(Path wav, Path out) throws IOException {
+        SpeechData sp = getMfcc(wav);
+        KaldiIO.writeBinaryKaldiFeatures(out, sp);
+        return sp;
+    }
+
+    private static SpeechData getMfcc(Path wav) throws IOException {
         FloatData allInput = new WavFileChannelReader(wav.toFile()).getAllSamples();
         ShiftedFrameGenerator generator = ShiftedFrameGenerator.forTime(8000, 25, 10, true);
         List<FloatData> frames = generator.generateAllFrames(allInput);
@@ -158,6 +178,7 @@ public class KaldiWrapper {
                 .windower(WindowFunction.Type.POVEY)
                 .build();
         List<Preprocessor.Result> results = preprocessor.processAllFloat(frames);
+
         Spectrogram spectrogram = new Spectrogram.Builder(preprocessor).build();
 
         MelFilterBank filter = MelFilterBank.KALDI_8KHZ
@@ -176,10 +197,7 @@ public class KaldiWrapper {
                 .stream()
                 .map(p -> cosineTransform.process(filter.process(spectrogram.process(p.data))))
                 .collect(Collectors.toList());
-        SpeechData sp = new SpeechData(Segment.fromWavFile(wav, 0), features);
-
-        KaldiIO.writeBinaryKaldiFeatures(out, sp);
-        return sp;
+        return new SpeechData(Segment.fromWavFile(wav, 0), features);
     }
 
     private static float[] toVector(float[][] arr2d) {

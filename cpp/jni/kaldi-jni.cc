@@ -90,7 +90,6 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decode
   const char *o_str = env->GetStringUTFChars(out_path_str, 0);
   const std::string out_path(o_str);
 
-  jfloat* featureArr = env->GetFloatArrayElements(feature_arr, NULL);
 
   bool allow_partial = true;
   kaldi::LatticeFasterDecoderConfig decoderConf;
@@ -134,8 +133,10 @@ JNIEXPORT void JNICALL Java_kaldijni_KaldiWrapper_decode
   const std::string utt(u_str);
 
       //const kaldi::Matrix<BaseFloat> &features (feature_reader.Value());
-      const kaldi::Matrix<BaseFloat> features(frame_count, dimension);
-      const Vector<BaseFloat> vec(frame_count*dimension);
+      jfloat* featureArr = env->GetFloatArrayElements(feature_arr, NULL);
+
+      kaldi::Matrix<BaseFloat> features(frame_count, dimension);
+      Vector<BaseFloat> vec(frame_count*dimension);
       for(int i = 0; i< frame_count*dimension ; i++) {
          vec(i) = featureArr[i];
       }
