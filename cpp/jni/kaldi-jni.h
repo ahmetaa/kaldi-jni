@@ -11,15 +11,15 @@
 namespace kaldi {
 namespace jni {
 
-class DecoderConfig {
+class ModelData {
  public:
 
-  DecoderConfig(
-     const nnet3::AmNnetSimple &am_nnet,
-     fst::Fst<fst::StdArc> *decode_fst,
-     fst::SymbolTable *word_syms,
-     TransitionModel *trans_model
-  ): am_nnet_(am_nnet), decode_fst_(decode_fst), word_syms_(word_syms), trans_model_(trans_model) {}
+  ModelData(
+      const nnet3::AmNnetSimple &am_nnet,
+      fst::Fst<fst::StdArc> *decode_fst,
+      fst::SymbolTable *word_syms,
+      TransitionModel *trans_model
+  ) : am_nnet_(am_nnet), decode_fst_(decode_fst), word_syms_(word_syms), trans_model_(trans_model) {}
 
   const nnet3::AmNnetSimple &GetAmNnet() { return am_nnet_; }
 
@@ -31,7 +31,11 @@ class DecoderConfig {
 
   void Info();
 
- private:  
+  void decode(const std::string &feature_file, const std::string &lattice_path);
+
+  void decode(Matrix<BaseFloat> &features, const std::string &lattice_path);
+
+ private:
   nnet3::AmNnetSimple am_nnet_;
   fst::Fst<fst::StdArc> *decode_fst_;
   fst::SymbolTable *word_syms_;
@@ -39,7 +43,7 @@ class DecoderConfig {
 
 };
 
-} // namespace jni 
+} // namespace jni
 } // namespace kaldi
 
 #endif // KALDI_JNI_AC_MODEL_WRAPPER_H_
