@@ -2,6 +2,9 @@ package kaldijni;
 
 import com.google.common.base.Stopwatch;
 
+import zemberek.core.concurrency.BlockingExecutor;
+import zemberek.core.logging.Log;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,7 +13,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 
 
 public class KaldiWrapper {
@@ -52,8 +54,8 @@ public class KaldiWrapper {
             float[] features,
             int frameCount,
             int dimension) {
-        decode( nativeHandle,
-            "ark:" + outputPath.toFile().getAbsolutePath(),
+        decode(nativeHandle,
+                "ark:" + outputPath.toFile().getAbsolutePath(),
                 utteranceId,
                 features,
                 frameCount,
@@ -98,60 +100,69 @@ public class KaldiWrapper {
         Path symbols = root.resolve("fst/babel-train/words.txt");
         KaldiWrapper wrapper = KaldiWrapper.load(model, fst, symbols);
 
-        Path out = Paths.get("foo");
+        Path outDir = Paths.get("foo");
+        Files.createDirectories(outDir);
 
-        //wrapper.multiThreadedTest(out);
-        wrapper.singleFileTest(out);
-        //wrapper.callFeatureTest(out);
+        Path wav = Paths.get("test/wav/wav1-8khz.wav");
 
+        Path wavRoot = Paths.get("test/wav-multiple");
+        List<Path> wavFiles = Files.walk(wavRoot, 1)
+                .filter(s -> s.toFile().getName().endsWith(".wav"))
+                .collect(Collectors.toList());
 
+        wrapper.multiThreadedTest(wavFiles, outDir);
+        Path singleOut = outDir.resolve(Segment.wavSourceId(wav) + ".lat");
+        //wrapper.singleFileTest(wav, out);
+        //wrapper.callFeatureTest(wav, singleOut);
         // System.out.println("modelInfo() = " + wrapper.modelInfo());
     }
 
-    private void singleFileTest(Path out) throws IOException {
-        Path wav = Paths.get("test/wav/wav1-8khz.wav");
-        Path featurePath = Paths.get("test/mfcc/wav1-8khz.mfcc.ark");
+    private void singleFileTest(Path wavFile, Path out) throws IOException {
+
+        Stopwatch sw = Stopwatch.createStarted();
+        Path featurePath = Files.createTempFile("feature", ".feat.ark");
         //Path arkPath = Paths.get("test/mfcc/raw_mfcc_tmp.01.ark");
-        generateMfcc(wav, featurePath);
+        generateMfcc(wavFile, featurePath);
 
-        Log.info("Start.");
         decodeWithFeatureFile(out, featurePath);
-        Log.info("End.");
-
+        Files.delete(featurePath);
+        Log.info("Elapsed = %d", sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
-    private void callFeatureTest(Path out) throws IOException {
-        Path wav = Paths.get("test/wav/wav1-8khz.wav");
+    private void callFeatureTest(Path wav, Path out) throws IOException {
+        Stopwatch sw = Stopwatch.createStarted();
+
         SpeechData sp = getMfcc(wav);
-        Log.info("Start.");
         decode(out,
-            wav.toFile().getName().replaceAll("\\.wav",""),
-            toVector(sp.getDataAsMatrix()),
-            sp.vectorCount(),
-            sp.get(0).size());
-        Log.info("End.");
+                wav.toFile().getName().replaceAll("\\.wav", ""),
+                toVector(sp.getDataAsMatrix()),
+                sp.vectorCount(),
+                sp.get(0).size());
+        Log.info("Elapsed = %d", sw.elapsed(TimeUnit.MILLISECONDS));
+
     }
 
-    private void multiThreadedTest(Path outDir) throws Exception {
+    private void multiThreadedTest(List<Path> wavFiles, Path outDir) throws Exception {
 
         Stopwatch sw = Stopwatch.createStarted();
         Log.info("Started.");
 
-        Path wavRoot = Paths.get("test/wav-multiple");
-        List<Path> wavFiles = Files.walk(wavRoot, 1).filter(s -> s.toFile().getName().endsWith(".wav"))
-                .collect(Collectors.toList());
 
-        ExecutorService service = new BlockingExecutor(2);
+        ExecutorService service = new BlockingExecutor(1);
 
         int i = 0;
         double d = 0;
         for (Path wavFile : wavFiles) {
             d += WavTool.getDurationInSeconds(wavFile);
-            Path featurePath = Files.createTempFile("feature", ".feat.ark");
-            generateMfcc(wavFile, featurePath);
             service.submit(() -> {
-                Log.info("Decoding %s", wavFile);
-                decodeWithFeatureFile(outDir, featurePath);
+                try {
+                    Log.info("Decoding %s", wavFile);
+                    String utteranceId = Segment.wavSourceId(wavFile);
+                    //singleFileTest(wavFile, outDir.resolve(utteranceId));
+                    callFeatureTest(wavFile, outDir.resolve(utteranceId));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             });
         }
 
@@ -170,6 +181,7 @@ public class KaldiWrapper {
     }
 
     private static SpeechData getMfcc(Path wav) throws IOException {
+        Stopwatch sw = Stopwatch.createStarted();
         FloatData allInput = new WavFileChannelReader(wav.toFile()).getAllSamples();
         ShiftedFrameGenerator generator = ShiftedFrameGenerator.forTime(8000, 25, 10, true);
         List<FloatData> frames = generator.generateAllFrames(allInput);
@@ -197,6 +209,8 @@ public class KaldiWrapper {
                 .stream()
                 .map(p -> cosineTransform.process(filter.process(spectrogram.process(p.data))))
                 .collect(Collectors.toList());
+
+        Log.info("Feature elapsed for %s is %d", wav, sw.elapsed(TimeUnit.MILLISECONDS));
         return new SpeechData(Segment.fromWavFile(wav, 0), features);
     }
 
